@@ -12,15 +12,26 @@ export function WelcomeStep({ state }: WelcomeStepProps) {
 
   return (
     <div className="flex flex-col items-center justify-center text-center flex-1">
-      {/* Logo with ambient glow */}
+      {/* Crewm8 wordmark with ambient glow. Uses theme-aware letter color:
+          black letters on light mode, white letters on dark mode. Aspect ratio
+          is ~3.43:1 so we fix height and let width flow. */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="relative mb-8"
       >
-        <div className="absolute inset-0 size-16 rounded-2xl bg-primary/10 blur-xl scale-[2.5]" />
-        <img src="/logo-only.png" alt="Rowboat" className="relative size-16" />
+        <div className="absolute inset-0 rounded-2xl bg-primary/10 blur-xl scale-[2]" />
+        <img
+          src="/crewm8-wordmark-black.png"
+          alt="Crewm8"
+          className="relative h-12 w-auto dark:hidden"
+        />
+        <img
+          src="/crewm8-wordmark-white.png"
+          alt="Crewm8"
+          className="relative h-12 w-auto hidden dark:block"
+        />
       </motion.div>
 
       {/* Tagline badge */}
@@ -41,7 +52,7 @@ export function WelcomeStep({ state }: WelcomeStepProps) {
         transition={{ delay: 0.2 }}
         className="text-3xl font-bold tracking-tight mb-3"
       >
-        Welcome to Rowboat
+        Welcome
       </motion.h1>
       <motion.p
         initial={{ opacity: 0 }}
@@ -49,7 +60,7 @@ export function WelcomeStep({ state }: WelcomeStepProps) {
         transition={{ delay: 0.3 }}
         className="text-base text-muted-foreground leading-relaxed max-w-sm mb-10"
       >
-        Rowboat connects to your work, builds a knowledge graph, and uses that context to help you get things done. Private and on your machine.
+        Crewm8 connects your desktop to your crewmate agents over a secure gateway, giving you a unified workspace for everything they're working on. Private and on your machine.
       </motion.p>
 
       {/* Sign in / connected state */}
@@ -63,7 +74,7 @@ export function WelcomeStep({ state }: WelcomeStepProps) {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <CheckCircle2 className="size-5" />
-              <span className="text-sm font-medium">Connected to Rowboat</span>
+              <span className="text-sm font-medium">Connected to Crewm8</span>
             </div>
             <Button
               onClick={() => {
@@ -90,7 +101,7 @@ export function WelcomeStep({ state }: WelcomeStepProps) {
               {rowboatState.isConnecting ? (
                 <><Loader2 className="size-5 animate-spin mr-2" />Waiting for sign in...</>
               ) : (
-                "Sign in with Rowboat"
+                "Sign in with Crewm8"
               )}
             </Button>
             {rowboatState.isConnecting && (

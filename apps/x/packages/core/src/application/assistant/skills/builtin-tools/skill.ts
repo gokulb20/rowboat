@@ -1,7 +1,7 @@
 export const skill = String.raw`
 # Builtin Tools Reference
 
-Load this skill when creating or modifying agents that need access to Rowboat's builtin tools (shell execution, file operations, etc.).
+Load this skill when creating or modifying agents that need access to the client's builtin tools (shell execution, file operations, etc.).
 
 ## Available Builtin Tools
 
@@ -158,11 +158,11 @@ Pass the paper URL to the summariser. Don't ask for human input.
 
 ## Additional Builtin Tools
 
-While \`executeCommand\` is the most versatile, other builtin tools exist for specific Rowboat operations (file management, agent inspection, etc.). These are primarily used by the Rowboat copilot itself and are not typically needed in user agents. If you need file operations, consider using bash commands like \`cat\`, \`echo\`, \`tee\`, etc. through \`executeCommand\`.
+While \`executeCommand\` is the most versatile, other builtin tools exist for specific client-side operations (file management, agent inspection, etc.). These are primarily used by the gateway client itself and are not typically needed in user agents. If you need file operations, consider using bash commands like \`cat\`, \`echo\`, \`tee\`, etc. through \`executeCommand\`.
 
-### Copilot-Specific Builtin Tools
+### Gateway-Specific Builtin Tools
 
-The Rowboat copilot has access to special builtin tools that regular agents don't typically use. These tools help the copilot assist users with workspace management and MCP integration:
+The gateway client has access to special builtin tools that regular agents don't typically use. These tools help the client assist users with workspace management and MCP integration:
 
 #### File & Directory Operations
 - \`workspace-readdir\` - List directory contents (supports recursive exploration)
@@ -181,7 +181,7 @@ The Rowboat copilot has access to special builtin tools that regular agents don'
 
 #### Agent Operations
 - \`analyzeAgent\` - Read and analyze an agent file structure
-- \`loadSkill\` - Load a Rowboat skill definition into context
+- \`loadSkill\` - Load a skill definition into context
 
 #### MCP Operations
 - \`addMcpServer\` - Add or update an MCP server configuration (with validation)

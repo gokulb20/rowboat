@@ -1,7 +1,7 @@
 {
-    "name": "rowboat",
-    "productName": "Rowboat",
-    "description": "AI coworker with memory",
+    "name": "crewm8",
+    "productName": "Crewm8",
+    "description": "Crewm8 Desktop Gateway",
     "type": "module",
     "version": "0.1.0",
     "main": ".package/dist/main.cjs",

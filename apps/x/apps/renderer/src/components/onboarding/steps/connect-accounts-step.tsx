@@ -98,7 +98,7 @@ export function ConnectAccountsStep({ state }: ConnectAccountsStepProps) {
         Connect Your Accounts
       </h2>
       <p className="text-base text-muted-foreground text-center leading-relaxed mb-8">
-        Rowboat gets smarter the more it knows about your work. Connect your accounts to get started. You can find more tools in Settings.
+        Crewm8 gets smarter the more your crewmate agents know about your work. Connect your accounts to get started. You can find more tools in Settings.
       </p>
 
       {providersLoading ? (
@@ -127,7 +127,7 @@ export function ConnectAccountsStep({ state }: ConnectAccountsStepProps) {
               ) : (
                 <ProviderCard
                   name="Google"
-                  description="Rowboat uses your email and calendar to provide personalized, context-aware assistance"
+                  description="Crewm8 passes your email and calendar context to your crewmate agents for personalized, context-aware assistance"
                   icon={<GmailIcon />}
                   iconBg="bg-red-500/10"
                   iconColor="text-red-500"
@@ -167,7 +167,7 @@ export function ConnectAccountsStep({ state }: ConnectAccountsStepProps) {
                   <span className="text-green-500"><FileText className="size-5" /></span>
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold">Rowboat Meeting Notes</div>
+                  <div className="text-sm font-semibold">Crewm8 Meeting Notes</div>
                   <div className="text-xs text-muted-foreground truncate">Built in. Ready to use.</div>
                 </div>
               </div>

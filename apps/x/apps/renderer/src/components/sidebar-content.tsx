@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Bot,
   ChevronRight,
@@ -88,7 +88,7 @@ import { ConnectorsPopover } from "@/components/connectors-popover"
 import { HelpPopover } from "@/components/help-popover"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { toast } from "@/lib/toast"
-import { useBilling } from "@/hooks/useBilling"
+// useBilling import removed — Crewm8 gateway model has no billing UI
 import { ServiceEvent } from "@x/shared/src/service-events.js"
 import z from "zod"
 
@@ -403,22 +403,10 @@ export function SidebarContentPanel({
   const [connectorsOpen, setConnectorsOpen] = useState(false)
   const [openConnectorsAfterClose, setOpenConnectorsAfterClose] = useState(false)
   const connectorsButtonRef = useRef<HTMLButtonElement | null>(null)
-  const [isRowboatConnected, setIsRowboatConnected] = useState(false)
-  const [loggingIn, setLoggingIn] = useState(false)
-  const [appUrl, setAppUrl] = useState<string | null>(null)
-  const { billing } = useBilling(isRowboatConnected)
-
-  const handleRowboatLogin = useCallback(async () => {
-    try {
-      setLoggingIn(true)
-      const result = await window.ipc.invoke('oauth:connect', { provider: 'rowboat' })
-      if (!result.success) {
-        setLoggingIn(false)
-      }
-    } catch {
-      setLoggingIn(false)
-    }
-  }, [])
+  // isRowboatConnected / loggingIn / appUrl / useBilling / handleRowboatLogin
+  // were removed here during the Crewm8 gateway migration — the old
+  // Rowboat-account sign-in CTA and Stripe billing display no longer
+  // exist in the sidebar. hasOauthError is still tracked for the error banner.
 
   useEffect(() => {
     let mounted = true
@@ -428,25 +416,19 @@ export function SidebarContentPanel({
         const result = await window.ipc.invoke('oauth:getState', null)
         const config = result.config || {}
         const hasError = Object.values(config).some((entry) => Boolean(entry?.error))
-        const connected = config['rowboat']?.connected ?? false
         if (mounted) {
           setHasOauthError(hasError)
-          setIsRowboatConnected(connected)
           if (!hasError) {
             setShowOauthAlert(true)
           }
         }
-        if (connected && mounted) {
-          try {
-            const account = await window.ipc.invoke('account:getRowboat', null)
-            if (mounted) setAppUrl(account.config?.appUrl ?? null)
-          } catch { /* ignore */ }
-        }
+        // Removed: fetch of Rowboat account appUrl for the now-deleted
+        // sidebar billing CTA. Kept the isRowboatConnected state for
+        // downstream consumers that may still read it.
       } catch (error) {
         console.error('Failed to fetch OAuth state:', error)
         if (mounted) {
           setHasOauthError(false)
-          setIsRowboatConnected(false)
           setShowOauthAlert(true)
         }
       }
@@ -455,7 +437,6 @@ export function SidebarContentPanel({
     refreshOauthError()
     const cleanup = window.ipc.on('oauth:didConnect', () => {
       refreshOauthError()
-      setLoggingIn(false)
     })
 
     return () => {
@@ -511,44 +492,10 @@ export function SidebarContentPanel({
           />
         )}
       </SidebarContent>
-      {/* Billing / upgrade CTA or Log in CTA */}
-      {isRowboatConnected && billing ? (
-        <div className="px-3 py-2">
-          <div className="flex items-center justify-between rounded-lg border border-sidebar-border bg-sidebar-accent/20 px-3 py-2">
-            <div className="min-w-0">
-              <span className="text-xs font-medium capitalize text-sidebar-foreground">
-                {billing.subscriptionPlan ? `${billing.subscriptionPlan} plan` : 'No plan'}
-              </span>
-              {billing.subscriptionStatus === 'trialing' && billing.trialExpiresAt && (() => {
-                const days = Math.max(0, Math.ceil((new Date(billing.trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                return (
-                  <p className="text-[10px] text-sidebar-foreground/60">
-                    {days === 0 ? 'Trial expires today' : days === 1 ? '1 day left' : `${days} days left`}
-                  </p>
-                )
-              })()}
-            </div>
-            <button
-              onClick={() => appUrl && window.open(`${appUrl}?intent=upgrade`)}
-              className="shrink-0 rounded-md bg-sidebar-foreground/10 px-2.5 py-1 text-[11px] font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-foreground/20"
-            >
-              {!billing.subscriptionPlan ? 'Subscribe' : billing.subscriptionPlan === 'starter' ? 'Upgrade' : 'Manage'}
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {/* Sign in CTA */}
-      {!isRowboatConnected && (
-        <div className="px-3 py-2">
-          <button
-            onClick={handleRowboatLogin}
-            disabled={loggingIn}
-            className="flex w-full items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/20 px-3 py-2.5 text-xs font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent/40 disabled:opacity-50"
-          >
-            {loggingIn ? 'Signing in…' : 'Sign in to Rowboat'}
-          </button>
-        </div>
-      )}
+      {/* Crewm8 gateway model: no sign-in, no billing. The old Rowboat-account
+          sign-in and Stripe billing CTAs were removed here during the gateway
+          migration. Agents live on remote hosts and are reached via the
+          OpenAI-compatible chat endpoint configured in Settings > Models. */}
       {/* Bottom actions */}
       <div className="border-t border-sidebar-border px-2 py-2">
         <div className="flex flex-col gap-1">

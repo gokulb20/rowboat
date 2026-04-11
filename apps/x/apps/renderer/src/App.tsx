@@ -4345,8 +4345,20 @@ function App() {
                           <ConversationContent className={tabConversationContentClassName}>
                             {!tabHasConversation ? (
                               <ConversationEmptyState className="h-auto">
-                                <div className="text-2xl font-semibold tracking-tight text-foreground/80 sm:text-3xl md:text-4xl">
-                                  What are we working on?
+                                <div className="flex flex-col items-center gap-6">
+                                  <img
+                                    src="/crewm8-wordmark-black.png"
+                                    alt="Crewm8"
+                                    className="h-10 w-auto opacity-80 dark:hidden"
+                                  />
+                                  <img
+                                    src="/crewm8-wordmark-white.png"
+                                    alt="Crewm8"
+                                    className="h-10 w-auto opacity-80 hidden dark:block"
+                                  />
+                                  <div className="text-2xl font-semibold tracking-tight text-foreground/80 sm:text-3xl md:text-4xl">
+                                    What are we working on?
+                                  </div>
                                 </div>
                               </ConversationEmptyState>
                             ) : (
@@ -4546,14 +4558,14 @@ function App() {
           <DialogHeader>
             <DialogTitle>Screen recording permission required</DialogTitle>
             <DialogDescription>
-              Rowboat needs <strong>Screen Recording</strong> permission to capture meeting audio from other apps (Zoom, Meet, etc.). This feature won't work without it.
+              Crewm8 needs <strong>Screen Recording</strong> permission to capture meeting audio from other apps (Zoom, Meet, etc.). This feature won't work without it.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
             <p>To enable this:</p>
             <ol className="list-decimal list-inside space-y-1.5">
               <li>Open <strong>System Settings</strong> → <strong>Privacy & Security</strong> → <strong>Screen Recording</strong></li>
-              <li>Toggle on <strong>Rowboat</strong></li>
+              <li>Toggle on <strong>Crewm8</strong></li>
               <li>You may need to restart the app after granting permission</li>
             </ol>
           </div>

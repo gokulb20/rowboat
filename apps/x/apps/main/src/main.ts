@@ -11,7 +11,8 @@ import {
 } from "./ipc.js";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname } from "node:path";
-import { updateElectronApp, UpdateSourceType } from "update-electron-app";
+// updateElectronApp import removed — auto-updater disabled for Crewm8 builds.
+// Re-add this import if you re-enable the updater at the call site below.
 import { init as initGmailSync } from "@x/core/dist/knowledge/sync_gmail.js";
 import { init as initCalendarSync } from "@x/core/dist/knowledge/sync_calendar.js";
 import { init as initFirefliesSync } from "@x/core/dist/knowledge/sync_fireflies.js";
@@ -35,6 +36,11 @@ const __dirname = dirname(__filename);
 
 // run this as early in the main process as possible
 if (started) app.quit();
+
+// Note: app.setName() is no longer needed here — the packaged .app is named
+// Crewm8 via productName in package.json, so Electron derives the correct
+// name automatically. The previous runtime override (2026-04-11 Phase 2a)
+// was removed in the full rebrand when the bundle itself became Crewm8.
 
 // Fix PATH for packaged Electron apps on macOS/Linux.
 // Packaged apps inherit a minimal environment that doesn't include paths from
@@ -118,6 +124,7 @@ function createWindow() {
     backgroundColor: "#252525", // Prevent white flash (matches dark mode)
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 12, y: 12 },
+    title: "Crewm8",
     webPreferences: {
       // IMPORTANT: keep Node out of renderer
       nodeIntegration: false,
@@ -184,16 +191,24 @@ app.whenReady().then(async () => {
     registerAppProtocol();
   }
 
-  // Initialize auto-updater (only in production)
-  if (app.isPackaged) {
-    updateElectronApp({
-      updateSource: {
-        type: UpdateSourceType.ElectronPublicUpdateService,
-        repo: "rowboatlabs/rowboat",
-      },
-      notifyUser: true, // Shows native dialog when update is available
-    });
-  }
+  // Auto-updater disabled for custom Crewm8 builds.
+  //
+  // The upstream code pointed at rowboatlabs/rowboat GitHub releases, which
+  // would overwrite our Crewm8 customizations on the next upstream release.
+  // We keep the import of `updateElectronApp` and `UpdateSourceType` because
+  // removing them would ripple through the import list; the call is just
+  // commented out. To re-enable later, point `repo` at a fork that publishes
+  // custom builds.
+  //
+  // if (app.isPackaged) {
+  //   updateElectronApp({
+  //     updateSource: {
+  //       type: UpdateSourceType.ElectronPublicUpdateService,
+  //       repo: "your-fork/crewm8-desktop",
+  //     },
+  //     notifyUser: true,
+  //   });
+  // }
 
   // Ensure agent-slack CLI is available
   try {

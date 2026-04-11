@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useState } from "react"
-import { AlertTriangle, Loader2, Mic, Mail, Calendar, User } from "lucide-react"
+import { AlertTriangle, Loader2, Mic, Mail, Calendar } from "lucide-react"
 
 import {
   Popover,
@@ -217,21 +217,8 @@ export function ConnectorsPopover({ children, tooltip, open: openProp, onOpenCha
             </div>
           ) : (
             <>
-              {/* Rowboat Account - show in "all" mode always, or in "unconnected" mode only when not connected */}
-              {c.providers.includes('rowboat') && (() => {
-                const rowboatState = c.providerStates['rowboat']
-                const isRowboatConnected = rowboatState?.isConnected && !rowboatState?.isLoading
-                if (isUnconnectedMode && isRowboatConnected) return null
-                return (
-                  <>
-                    <div className="px-2 py-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">Account</span>
-                    </div>
-                    {renderOAuthProvider('rowboat', 'Rowboat', <User className="size-4" />, 'Log in to your Rowboat account')}
-                    <Separator className="my-2" />
-                  </>
-                )
-              })()}
+              {/* Crewm8 gateway model: the old Rowboat-account OAuth entry was
+                  removed here. Agents are connected via Settings > Models. */}
 
               {/* Email & Calendar Section */}
               {(c.useComposioForGoogle || c.useComposioForGoogleCalendar || c.providers.includes('google')) && hasUnconnectedEmailCalendar && (

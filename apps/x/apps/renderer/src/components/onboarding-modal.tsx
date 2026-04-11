@@ -915,9 +915,9 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
           <span className="text-lg font-medium text-muted-foreground">Your AI coworker, with memory</span>
         </div>
         <DialogHeader className="space-y-3 mb-8">
-          <DialogTitle className="text-2xl">Sign in to Rowboat</DialogTitle>
+          <DialogTitle className="text-2xl">Sign in to Crewm8</DialogTitle>
           <DialogDescription className="text-base max-w-md mx-auto">
-            Connect your Rowboat account for instant access to all models through our gateway — no API keys needed.
+            Connect your Crewm8 account for instant access to all models through our gateway — no API keys needed.
           </DialogDescription>
         </DialogHeader>
 
@@ -925,7 +925,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 text-green-600">
               <CheckCircle2 className="size-5" />
-              <span className="text-sm font-medium">Connected to Rowboat</span>
+              <span className="text-sm font-medium">Connected to Crewm8</span>
             </div>
             <Button onClick={() => setCurrentStep(3 as Step)} size="lg" className="w-full max-w-xs">
               Continue
@@ -945,7 +945,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
               {rowboatState.isConnecting ? (
                 <><Loader2 className="size-4 animate-spin mr-2" />Waiting for sign in...</>
               ) : (
-                "Sign in with Rowboat"
+                "Sign in with Crewm8"
               )}
             </Button>
             {rowboatState.isConnecting && (
@@ -977,7 +977,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
       <DialogHeader className="text-center mb-6">
         <DialogTitle className="text-2xl">Before you continue</DialogTitle>
         <DialogDescription className="text-base max-w-md mx-auto">
-          With a Rowboat account, you get:
+          With a Crewm8 account, you get:
         </DialogDescription>
       </DialogHeader>
 
@@ -1006,7 +1006,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
       </div>
 
       <p className="text-sm text-muted-foreground text-center mb-6">
-        By continuing, you'll set up your own API keys instead of using Rowboat's managed gateway.
+        By continuing, you'll set up your own API keys instead of using Crewm8's managed gateway.
       </p>
 
       <div className="flex items-center justify-between">
@@ -1354,7 +1354,7 @@ export function OnboardingModal({ open, onComplete }: OnboardingModalProps) {
         )}
 
         <Button onClick={handleComplete} size="lg" className="mt-8 w-full max-w-xs">
-          Start Using Rowboat
+          Start Using Crewm8
         </Button>
       </div>
     )
