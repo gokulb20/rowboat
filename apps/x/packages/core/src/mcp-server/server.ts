@@ -85,6 +85,33 @@ function makeSyntheticContext(): ToolContext {
 // Tool registration
 // ---------------------------------------------------------------------------
 
+// Extract the raw shape (field → schema map) from a Rowboat ZodObject. This
+// supports both Zod v3 and v4 internal layouts because @modelcontextprotocol/sdk's
+// registerTool() expects a ZodRawShapeCompat (Record<string, AnySchema>), not a
+// ZodObject. Passing the ZodObject directly makes the SDK fail silently and
+// return an empty `properties: {}` in tools/list — which then makes hermes's
+// LLM think the tool takes no arguments and call it with {}.
+function extractShape(inputSchema: unknown): Record<string, unknown> | undefined {
+    if (!inputSchema || typeof inputSchema !== "object") return undefined;
+    const s = inputSchema as {
+        shape?: Record<string, unknown> | (() => Record<string, unknown>);
+        _def?: { shape?: Record<string, unknown> | (() => Record<string, unknown>) };
+        _zod?: { def?: { shape?: Record<string, unknown> | (() => Record<string, unknown>) } };
+    };
+    // v4 direct getter
+    if (s.shape && typeof s.shape !== "function") return s.shape;
+    if (typeof s.shape === "function") return (s.shape as () => Record<string, unknown>)();
+    // v3 nested under _def
+    const v3 = s._def?.shape;
+    if (v3 && typeof v3 !== "function") return v3;
+    if (typeof v3 === "function") return (v3 as () => Record<string, unknown>)();
+    // v4 nested under _zod
+    const v4 = s._zod?.def?.shape;
+    if (v4 && typeof v4 !== "function") return v4;
+    if (typeof v4 === "function") return (v4 as () => Record<string, unknown>)();
+    return undefined;
+}
+
 function registerTools(mcpServer: McpServer, allowedNames: string[]): void {
     let registered = 0;
 
@@ -101,14 +128,23 @@ function registerTools(mcpServer: McpServer, allowedNames: string[]): void {
         }
 
         const { description, inputSchema, execute } = toolDef;
+        const shape = extractShape(inputSchema);
 
-        // McpServer.tool() accepts (name, description, zodShape, handler).
-        // We pass the zod object directly; the SDK accepts ZodObject-like schemas.
+        if (!shape) {
+            log.warn(`Tool '${name}' has no extractable shape — registering as zero-arg tool`);
+        }
+
+        // Use the new non-deprecated registerTool() API. It accepts either a
+        // ZodRawShapeCompat (flat object of field → zod schema) or an AnySchema.
+        // We pass the extracted shape so the SDK can build the JSON Schema for
+        // tools/list correctly.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mcpServer as any).tool(
+        (mcpServer as any).registerTool(
             name,
-            description,
-            inputSchema,
+            {
+                description,
+                inputSchema: shape ?? {},
+            },
             async (args: Record<string, unknown>) => {
                 const ctx = makeSyntheticContext();
                 try {
