@@ -11,7 +11,11 @@ import { executeAction, useComposioForGoogleCalendar } from '../composio/client.
 import { composioAccountsRepo } from '../composio/repo.js';
 
 // Configuration
-const SYNC_DIR = path.join(WorkDir, 'calendar_sync');
+// Calendar meeting notes land under knowledge/Meetings/calendar/ so they show
+// up alongside the other meeting-note sources (granola, fireflies) in the
+// Meetings sidebar tab. Previously this was ~/.rowboat/calendar_sync/ which
+// was invisible in the Crewm8 UI.
+const SYNC_DIR = path.join(WorkDir, 'knowledge', 'Meetings', 'calendar');
 const SYNC_INTERVAL_MS = 5 * 60 * 1000; // Check every 5 minutes
 const LOOKBACK_DAYS = 7;
 const COMPOSIO_LOOKBACK_DAYS = 7;

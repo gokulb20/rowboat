@@ -957,6 +957,7 @@ function countFiles(node: TreeNode): number {
 /** Display name overrides for top-level knowledge folders */
 const FOLDER_DISPLAY_NAMES: Record<string, string> = {
   Notes: 'My Notes',
+  Meetings: '🎙️ Meetings',
 }
 
 // Tree component for file browser

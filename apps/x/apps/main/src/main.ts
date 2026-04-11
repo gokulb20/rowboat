@@ -15,8 +15,13 @@ import { dirname } from "node:path";
 // Re-add this import if you re-enable the updater at the call site below.
 import { init as initGmailSync } from "@x/core/dist/knowledge/sync_gmail.js";
 import { init as initCalendarSync } from "@x/core/dist/knowledge/sync_calendar.js";
-import { init as initFirefliesSync } from "@x/core/dist/knowledge/sync_fireflies.js";
-import { init as initGranolaSync } from "@x/core/dist/knowledge/granola/sync.js";
+// Fireflies and Granola client-side syncs disabled — in gateway mode, hermes
+// on the Mac Mini runs its own Fireflies/Granola syncs and pushes results to
+// its own vault, which the rsync daemon then pulls into ~/.rowboat/knowledge/
+// Sudo/Vault/meeting notes/ on the laptop. Running client-side duplicates
+// silently fails with no credentials and just noise up the logs.
+// import { init as initFirefliesSync } from "@x/core/dist/knowledge/sync_fireflies.js";
+// import { init as initGranolaSync } from "@x/core/dist/knowledge/granola/sync.js";
 // Background LLM agents disabled in gateway mode — hermes does its own
 // graph building, tagging, email labeling, and note summarization on the
 // Mac Mini. Running them on the laptop duplicates work and burns tokens.
@@ -31,9 +36,11 @@ import started from "electron-squirrel-startup";
 import { execSync, exec, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { init as initChromeSync } from "@x/core/dist/knowledge/chrome-extension/server/server.js";
-// Crewm8 MCP server — exposes builtin tools to the remote hermes agent so
-// it can act on the laptop's filesystem over Tailscale (MCP bridge).
-import { startMcpServer, stopMcpServer } from "@x/core/dist/mcp-server/server.js";
+// Crewm8 MCP server import removed — the MCP bridge architecture was dropped
+// in favor of the gateway model. Crewm8 is now a pure chat gateway client
+// (like WhatsApp), not a tool provider for the remote hermes agent. The
+// server.ts file is kept in packages/core for reference and can be re-enabled
+// later if we revisit the "local hands for remote brain" design.
 
 const execAsync = promisify(exec);
 
@@ -255,11 +262,9 @@ app.whenReady().then(async () => {
   // start calendar sync
   initCalendarSync();
 
-  // start fireflies sync
-  initFirefliesSync();
-
-  // start granola sync
-  initGranolaSync();
+  // Fireflies and Granola client-side syncs disabled — see import comment above.
+  // initFirefliesSync();
+  // initGranolaSync();
 
   // Background LLM agents disabled in gateway mode. Hermes on the Mac Mini
   // handles graph building, note tagging, email labeling, and agent notes
@@ -276,13 +281,10 @@ app.whenReady().then(async () => {
   // start chrome extension sync server
   initChromeSync();
 
-  // start Crewm8 MCP server — exposes builtin tools (executeCommand,
-  // workspace-readFile, workspace-grep, etc.) to the remote hermes agent
-  // over Tailscale. Bound to 0.0.0.0:8643 so hermes on 100.127.242.92 can
-  // dial back. This is the "local hands for remote brain" bridge.
-  startMcpServer(Number(process.env.CREWM8_MCP_PORT ?? 8643)).catch((err) => {
-    console.error("[main] Failed to start Crewm8 MCP server:", err);
-  });
+  // Crewm8 MCP server start removed — MCP bridge architecture was dropped in
+  // favor of the gateway model. Crewm8 no longer exposes tools to the remote
+  // hermes agent; it is a pure chat gateway client. Hermes runs its own tools
+  // on the Mac Mini.
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -302,5 +304,6 @@ app.on("before-quit", () => {
   stopWorkspaceWatcher();
   stopRunsWatcher();
   stopServicesWatcher();
-  stopMcpServer().catch(() => { /* best-effort */ });
+  // stopMcpServer() call removed — MCP bridge architecture was dropped in
+  // favor of the gateway model. See import comment above for details.
 });

@@ -44,6 +44,7 @@ import {
   usePromptInputController,
 } from '@/components/ai-elements/prompt-input'
 import { toast } from 'sonner'
+import { maybeInterceptSlashCommand, type SlashCommandContext } from '@/lib/slash-commands'
 
 export type StagedAttachment = {
   id: string
@@ -373,9 +374,52 @@ function ChatInputInner({
     setAttachments((prev) => prev.filter((attachment) => attachment.id !== id))
   }, [])
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!canSubmit) return
-    onSubmit({ text: message.trim(), files: [] }, controller.mentions.mentions, attachments, searchEnabled || undefined)
+
+    // Slash command interceptor — handles /model, /new, /settings, /help
+    // client-side before any message reaches hermes. Passthrough commands
+    // (/voice, /retry, /status) fall through to the normal onSubmit path
+    // so hermes handles them using its existing per-channel logic.
+    const raw = message.trim()
+    const slashContext: SlashCommandContext = {
+      openModelPicker: () => {
+        toast.info('Open the model picker in the chat bar at the bottom of the window (the small model name dropdown next to the Send button).')
+      },
+      listModels: async () => {
+        try {
+          const result = await (window as unknown as { ipc: { invoke: (ch: string, args: unknown) => Promise<unknown> } }).ipc.invoke('models:list', null) as { providers?: Array<{ id: string; models: Array<{ id: string }> }> }
+          const names: string[] = []
+          for (const p of result.providers ?? []) {
+            for (const m of p.models ?? []) {
+              names.push(`${p.id}/${m.id}`)
+            }
+          }
+          return names
+        } catch {
+          return []
+        }
+      },
+      clearCurrentTab: () => {
+        toast.info('To start a fresh chat, click the "+" tab at the top of the chat pane or use the New Chat button in the sidebar.')
+      },
+      openSettings: () => {
+        toast.info('Open Settings via the gear icon in the sidebar (bottom-left).')
+      },
+      showInlineReply: (text: string) => {
+        toast.info(text, { duration: 10000, style: { whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' } })
+      },
+    }
+    const intercepted = await maybeInterceptSlashCommand(raw, slashContext)
+    if (intercepted) {
+      controller.textInput.clear()
+      controller.mentions.clearMentions()
+      setAttachments([])
+      setSearchEnabled(false)
+      return
+    }
+
+    onSubmit({ text: raw, files: [] }, controller.mentions.mentions, attachments, searchEnabled || undefined)
     controller.textInput.clear()
     controller.mentions.clearMentions()
     setAttachments([])
