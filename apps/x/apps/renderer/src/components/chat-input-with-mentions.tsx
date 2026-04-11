@@ -387,15 +387,18 @@ function ChatInputInner({
         toast.info('Open the model picker in the chat bar at the bottom of the window (the small model name dropdown next to the Send button).')
       },
       listModels: async () => {
+        // Show only the currently configured model from models.json — NOT the
+        // full models.dev catalog (which has ~30 entries and is overwhelming).
+        // In the gateway model, Crewm8 routes all chat through hermes which
+        // itself picks the backing model. So the "configured model" is always
+        // the gateway virtual model name (e.g. hermes-agent), and the actual
+        // backing LLM is whatever the gateway has configured on its side.
         try {
-          const result = await (window as unknown as { ipc: { invoke: (ch: string, args: unknown) => Promise<unknown> } }).ipc.invoke('models:list', null) as { providers?: Array<{ id: string; models: Array<{ id: string }> }> }
-          const names: string[] = []
-          for (const p of result.providers ?? []) {
-            for (const m of p.models ?? []) {
-              names.push(`${p.id}/${m.id}`)
-            }
-          }
-          return names
+          const result = await (window as unknown as { ipc: { invoke: (ch: string, args: unknown) => Promise<{ data: string }> } }).ipc.invoke('workspace:readFile', { path: 'config/models.json', encoding: 'utf8' })
+          const cfg = JSON.parse(result.data) as { model?: string; provider?: { baseURL?: string } }
+          const modelName = cfg?.model ?? '(unset)'
+          const baseURL = cfg?.provider?.baseURL ?? '(no baseURL)'
+          return [`${modelName}  (gateway: ${baseURL})`]
         } catch {
           return []
         }

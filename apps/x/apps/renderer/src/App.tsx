@@ -496,37 +496,39 @@ function FixedSidebarToggle({
       >
         <SearchIcon className="size-5" />
       </button>
-      {meetingAvailable && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggleMeeting}
-              disabled={meetingState === 'connecting' || meetingState === 'stopping' || meetingSummarizing}
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none",
-                meetingSummarizing
-                  ? "text-muted-foreground"
-                  : meetingState === 'recording'
-                    ? "text-red-500 hover:bg-accent"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-              style={{ marginLeft: TITLEBAR_BUTTON_GAP_PX }}
-            >
-              {meetingSummarizing || meetingState === 'connecting' ? (
-                <LoaderIcon className="size-4 animate-spin" />
-              ) : meetingState === 'recording' ? (
-                <SquareIcon className="size-4 animate-pulse" />
-              ) : (
-                <RadioIcon className="size-5" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {meetingSummarizing ? 'Generating meeting notes...' : meetingState === 'connecting' ? 'Starting transcription...' : meetingState === 'recording' ? 'Stop meeting notes' : 'Take new meeting notes'}
-          </TooltipContent>
-        </Tooltip>
-      )}
+      {/* Meeting record button — always visible now (was gated on meetingAvailable
+          which required Deepgram to be configured). Click handler will show a
+          setup prompt if Deepgram/voice credentials aren't set up yet. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onToggleMeeting}
+            disabled={meetingState === 'connecting' || meetingState === 'stopping' || meetingSummarizing}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none",
+              meetingSummarizing
+                ? "text-muted-foreground"
+                : meetingState === 'recording'
+                  ? "text-red-500 hover:bg-accent"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            )}
+            style={{ marginLeft: TITLEBAR_BUTTON_GAP_PX }}
+            aria-label="Take meeting notes"
+          >
+            {meetingSummarizing || meetingState === 'connecting' ? (
+              <LoaderIcon className="size-4 animate-spin" />
+            ) : meetingState === 'recording' ? (
+              <SquareIcon className="size-4 animate-pulse" />
+            ) : (
+              <RadioIcon className="size-5" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          {meetingSummarizing ? 'Generating meeting notes...' : meetingState === 'connecting' ? 'Starting transcription...' : meetingState === 'recording' ? 'Stop meeting notes' : !meetingAvailable ? 'Take meeting notes (Deepgram required)' : 'Take meeting notes'}
+        </TooltipContent>
+      </Tooltip>
     </div>
   )
 }
@@ -3535,6 +3537,15 @@ function App() {
   }, [])
 
   const handleToggleMeeting = useCallback(async () => {
+    // Guard: if Deepgram isn't configured, tell the user how to fix it
+    // instead of silently failing inside useMeetingTranscription.start()
+    if (meetingTranscription.state === 'idle' && !voiceAvailable) {
+      toast.error(
+        'Meeting transcription requires a Deepgram API key. Add one at ~/.rowboat/config/deepgram.json with { "apiKey": "..." }, then restart Crewm8.',
+        { duration: 12000 },
+      )
+      return
+    }
     if (meetingTranscription.state === 'recording') {
       await meetingTranscription.stop()
 

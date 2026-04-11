@@ -1172,7 +1172,34 @@ async function* streamLlm(
         stopWhen: stepCountIs(1),
         abortSignal: signal,
     });
-    for await (const event of fullStream) {
+    // Wrap the stream iterator in a try/catch so Vercel AI SDK parse errors
+    // (most commonly AI_TypeValidationError when an upstream gateway emits
+    // streaming chunks in a shape the SDK's validator doesn't recognize —
+    // e.g. xiaomi/mimo-v2-pro's reasoning blocks, models that emit custom
+    // fields, or models that mix tool_calls with reasoning) don't bubble out
+    // as unhandled rejections and leave the assistant turn with empty content.
+    // Instead we yield an "error" event that the outer agent loop can surface
+    // to the user as a visible error message with real context.
+    const iterator = (async function* () {
+        try {
+            for await (const event of fullStream) {
+                yield event;
+            }
+        } catch (err) {
+            const name = (err as { name?: string })?.name ?? "StreamError";
+            const message = err instanceof Error ? err.message : String(err);
+            yield {
+                type: "error" as const,
+                error: new Error(
+                    `${name} while streaming from the model — the gateway returned a chunk the client couldn't parse. ` +
+                    `This often means the underlying model (on hermes's side) emits a streaming format incompatible ` +
+                    `with the OpenAI chat completions spec. Try asking again, switching models via /model, or check ` +
+                    `the hermes gateway logs for the full response. Original: ${message}`,
+                ),
+            };
+        }
+    })();
+    for await (const event of iterator) {
         // Check abort on every chunk for responsiveness
         signal?.throwIfAborted();
         console.log("-> \t\tstream event", JSON.stringify(event));
