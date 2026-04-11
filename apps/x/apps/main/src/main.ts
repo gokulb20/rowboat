@@ -17,17 +17,23 @@ import { init as initGmailSync } from "@x/core/dist/knowledge/sync_gmail.js";
 import { init as initCalendarSync } from "@x/core/dist/knowledge/sync_calendar.js";
 import { init as initFirefliesSync } from "@x/core/dist/knowledge/sync_fireflies.js";
 import { init as initGranolaSync } from "@x/core/dist/knowledge/granola/sync.js";
-import { init as initGraphBuilder } from "@x/core/dist/knowledge/build_graph.js";
-import { init as initEmailLabeling } from "@x/core/dist/knowledge/label_emails.js";
-import { init as initNoteTagging } from "@x/core/dist/knowledge/tag_notes.js";
-import { init as initInlineTasks } from "@x/core/dist/knowledge/inline_tasks.js";
+// Background LLM agents disabled in gateway mode — hermes does its own
+// graph building, tagging, email labeling, and note summarization on the
+// Mac Mini. Running them on the laptop duplicates work and burns tokens.
+// import { init as initGraphBuilder } from "@x/core/dist/knowledge/build_graph.js";
+// import { init as initEmailLabeling } from "@x/core/dist/knowledge/label_emails.js";
+// import { init as initNoteTagging } from "@x/core/dist/knowledge/tag_notes.js";
+// import { init as initInlineTasks } from "@x/core/dist/knowledge/inline_tasks.js";
+// import { init as initAgentNotes } from "@x/core/dist/knowledge/agent_notes.js";
 import { init as initAgentRunner } from "@x/core/dist/agent-schedule/runner.js";
-import { init as initAgentNotes } from "@x/core/dist/knowledge/agent_notes.js";
 import { initConfigs } from "@x/core/dist/config/initConfigs.js";
 import started from "electron-squirrel-startup";
 import { execSync, exec, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { init as initChromeSync } from "@x/core/dist/knowledge/chrome-extension/server/server.js";
+// Crewm8 MCP server — exposes builtin tools to the remote hermes agent so
+// it can act on the laptop's filesystem over Tailscale (MCP bridge).
+import { startMcpServer, stopMcpServer } from "@x/core/dist/mcp-server/server.js";
 
 const execAsync = promisify(exec);
 
@@ -255,26 +261,28 @@ app.whenReady().then(async () => {
   // start granola sync
   initGranolaSync();
 
-  // start knowledge graph builder
-  initGraphBuilder();
+  // Background LLM agents disabled in gateway mode. Hermes on the Mac Mini
+  // handles graph building, note tagging, email labeling, and agent notes
+  // on its own side. Running these locally duplicates work and burns tokens.
+  //   initGraphBuilder();
+  //   initEmailLabeling();
+  //   initNoteTagging();
+  //   initInlineTasks();
+  //   initAgentNotes();
 
-  // start email labeling service
-  initEmailLabeling();
-
-  // start note tagging service
-  initNoteTagging();
-
-  // start inline task service (@rowboat: mentions)
-  initInlineTasks();
-
-  // start background agent runner (scheduled agents)
+  // start background agent runner (scheduled agents — user-defined schedules)
   initAgentRunner();
-
-  // start agent notes learning service
-  initAgentNotes();
 
   // start chrome extension sync server
   initChromeSync();
+
+  // start Crewm8 MCP server — exposes builtin tools (executeCommand,
+  // workspace-readFile, workspace-grep, etc.) to the remote hermes agent
+  // over Tailscale. Bound to 0.0.0.0:8643 so hermes on 100.127.242.92 can
+  // dial back. This is the "local hands for remote brain" bridge.
+  startMcpServer(Number(process.env.CREWM8_MCP_PORT ?? 8643)).catch((err) => {
+    console.error("[main] Failed to start Crewm8 MCP server:", err);
+  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -294,4 +302,5 @@ app.on("before-quit", () => {
   stopWorkspaceWatcher();
   stopRunsWatcher();
   stopServicesWatcher();
+  stopMcpServer().catch(() => { /* best-effort */ });
 });

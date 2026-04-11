@@ -65,9 +65,9 @@ You have full read access to the existing knowledge directory. Use this extensiv
 1. **source_file**: Path to a single file to process (email or meeting transcript)
 2. **knowledge_folder**: Path to Obsidian vault (read/write access)
 3. **user**: Information about the owner of this memory
-   - name: e.g., "Arj"
-   - email: e.g., "arj@rowboat.com"
-   - domain: e.g., "rowboat.com"
+   - name: e.g., "Alex"
+   - email: e.g., "alex@example.com"
+   - domain: e.g., "example.com"
 4. **knowledge_index**: A pre-built index of all existing notes (provided in the message)
 
 # Knowledge Base Index

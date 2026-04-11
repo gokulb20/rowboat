@@ -11,8 +11,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+// Setup guide URL — replace with the Crewm8 documentation URL when published.
+// For now, Google's own OAuth client docs work as a fallback.
 const GOOGLE_CLIENT_ID_SETUP_GUIDE_URL =
-  "https://github.com/rowboatlabs/rowboat/blob/main/google-setup.md"
+  "https://support.google.com/cloud/answer/6158849"
 
 interface GoogleClientIdModalProps {
   open: boolean
