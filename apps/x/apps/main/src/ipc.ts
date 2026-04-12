@@ -745,6 +745,63 @@ export function setupIpcHandlers() {
       const notes = await summarizeMeeting(args.transcript, args.meetingStartTime, args.calendarEventJson);
       return { notes };
     },
+    // List calendar events starting in the next 2 hours so the meeting button
+    // can show a picker ("record this call?"). Reads from the same dir that
+    // sync_calendar.ts writes to — Google Calendar `Schema$Event` JSON files.
+    'meeting:getUpcomingEvents': async () => {
+      const calendarDir = path.join(os.homedir(), '.rowboat', 'knowledge', 'Meetings', 'calendar');
+      try {
+        const entries = await fs.readdir(calendarDir).catch(() => [] as string[]);
+        const now = Date.now();
+        const windowMs = 2 * 60 * 60 * 1000; // next 2 hours
+        const upcoming: Array<{ id: string; summary: string; startDateTime: string; endDateTime: string; attendees: string[]; htmlLink?: string; location?: string; }> = [];
+
+        for (const filename of entries) {
+          if (!filename.endsWith('.json')) continue;
+          if (filename === 'sync_state.json' || filename === 'composio_state.json') continue;
+
+          try {
+            const raw = await fs.readFile(path.join(calendarDir, filename), 'utf-8');
+            const ev = JSON.parse(raw);
+            const startStr: string | undefined = ev?.start?.dateTime;
+            const endStr: string | undefined = ev?.end?.dateTime;
+            if (!startStr || !endStr) continue; // skip all-day events
+
+            const startMs = new Date(startStr).getTime();
+            if (Number.isNaN(startMs)) continue;
+
+            // Include events starting within the next 2h OR currently in progress
+            const startDelta = startMs - now;
+            const endMs = new Date(endStr).getTime();
+            const inProgress = startMs <= now && endMs > now;
+            const imminent = startDelta >= -5 * 60 * 1000 && startDelta <= windowMs;
+            if (!inProgress && !imminent) continue;
+
+            const attendees = Array.isArray(ev.attendees)
+              ? ev.attendees.map((a: { email?: string; displayName?: string }) => a.displayName || a.email || '').filter(Boolean)
+              : [];
+
+            upcoming.push({
+              id: ev.id || filename.replace('.json', ''),
+              summary: ev.summary || '(no title)',
+              startDateTime: startStr,
+              endDateTime: endStr,
+              attendees,
+              htmlLink: ev.htmlLink,
+              location: ev.location,
+            });
+          } catch {
+            // corrupt/partial file — skip
+          }
+        }
+
+        upcoming.sort((a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime());
+        return { meetings: upcoming };
+      } catch (err) {
+        console.warn('[meeting:getUpcomingEvents] failed:', err);
+        return { meetings: [] };
+      }
+    },
     'inline-task:classifySchedule': async (_event, args) => {
       const schedule = await classifySchedule(args.instruction);
       return { schedule };

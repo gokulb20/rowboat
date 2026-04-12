@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { generateText } from 'ai';
+import { generateText, type LanguageModel } from 'ai';
 import container from '../di/container.js';
 import type { IModelConfigRepo } from '../models/repo.js';
 import { createProvider } from '../models/models.js';
 import { isSignedIn } from '../account/account.js';
 import { getGatewayProvider } from '../models/gateway.js';
+import { getOpenRouterLanguageModel } from '../models/openrouter-provider.js';
 import { WorkDir } from '../config/config.js';
 
 const CALENDAR_SYNC_DIR = path.join(WorkDir, 'calendar_sync');
@@ -138,15 +139,28 @@ function loadCalendarEventContext(calendarEventJson: string): string {
 }
 
 export async function summarizeMeeting(transcript: string, meetingStartTime?: string, calendarEventJson?: string): Promise<string> {
+    // Route meeting summarization through hermes so it uses whatever model
+    // the user has configured on the Mac Mini. Falls back to OpenRouter if
+    // hermes is unreachable. The result lands in the shared vault regardless,
+    // so Sudo ends up knowing about the summary through the filesystem.
     const repo = container.resolve<IModelConfigRepo>('modelConfigRepo');
     const config = await repo.getConfig();
-    const signedIn = await isSignedIn();
-    const provider = signedIn
-        ? await getGatewayProvider()
-        : createProvider(config.provider);
-    const modelId = config.meetingNotesModel
-        || (signedIn ? "gpt-5.4" : config.model);
-    const model = provider.languageModel(modelId);
+    let model: LanguageModel;
+    try {
+        const provider = createProvider(config.provider);
+        const modelId = config.meetingNotesModel || config.model;
+        model = provider.languageModel(modelId);
+        console.log(`[summarize_meeting] using hermes provider with model ${modelId}`);
+    } catch (hermesErr) {
+        // Hermes down? Fall back to OpenRouter for continuity.
+        const orModel = await getOpenRouterLanguageModel();
+        if (orModel) {
+            model = orModel;
+            console.log('[summarize_meeting] hermes unavailable — falling back to OpenRouter');
+        } else {
+            throw hermesErr; // Nothing available
+        }
+    }
 
     // If a specific calendar event was linked, use it directly.
     // Otherwise fall back to scanning events within ±3 hours.

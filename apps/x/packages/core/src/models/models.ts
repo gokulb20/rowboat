@@ -6,6 +6,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOllama } from "ollama-ai-provider-v2";
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createHermesCompatFetch } from './hermes-compat-fetch.js';
 import { LlmModelConfig, LlmProvider } from "@x/shared/dist/models.js";
 import z from "zod";
 import { isSignedIn } from "../account/account.js";
@@ -58,6 +59,12 @@ export function createProvider(config: z.infer<typeof Provider>): ProviderV2 {
                 apiKey,
                 baseURL: baseURL || "",
                 headers,
+                // Use our custom fetch wrapper that normalizes SSE chunks
+                // from hermes/openai-compatible gateways. This strips non-
+                // standard fields (reasoning, provider metadata, etc.)
+                // before the AI SDK's strict validator sees them, preventing
+                // AI_TypeValidationError on models like xiaomi/mimo-v2-pro.
+                fetch: createHermesCompatFetch(),
             });
         case "openrouter":
             return createOpenRouter({

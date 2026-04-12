@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { PostHogProvider } from 'posthog-js/react'
 import { ThemeProvider } from '@/contexts/theme-context'
+import { ArtifactProvider } from '@/contexts/artifact-context'
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
@@ -14,7 +15,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PostHogProvider apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY} options={options}>
       <ThemeProvider defaultTheme="system">
-        <App />
+        <ArtifactProvider>
+          <App />
+        </ArtifactProvider>
       </ThemeProvider>
     </PostHogProvider>
   </StrictMode>,

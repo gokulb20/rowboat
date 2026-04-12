@@ -519,6 +519,20 @@ const ipcSchemas = {
       notes: z.string(),
     }),
   },
+  'meeting:getUpcomingEvents': {
+    req: z.null(),
+    res: z.object({
+      meetings: z.array(z.object({
+        id: z.string(),
+        summary: z.string(),
+        startDateTime: z.string(),
+        endDateTime: z.string(),
+        attendees: z.array(z.string()),
+        htmlLink: z.string().optional(),
+        location: z.string().optional(),
+      })),
+    }),
+  },
   // Inline task schedule classification
   'export:note': {
     req: z.object({

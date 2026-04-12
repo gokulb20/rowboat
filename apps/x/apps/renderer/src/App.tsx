@@ -5,7 +5,7 @@ import { RunEvent, ListRunsResponse } from '@x/shared/src/runs.js';
 import type { LanguageModelUsage, ToolUIPart } from 'ai';
 import './App.css'
 import z from 'zod';
-import { CheckIcon, LoaderIcon, PanelLeftIcon, Maximize2, Minimize2, ChevronLeftIcon, ChevronRightIcon, SquarePen, SearchIcon, HistoryIcon, RadioIcon, SquareIcon } from 'lucide-react';
+import { CheckIcon, LoaderIcon, PanelLeftIcon, Maximize2, Minimize2, ChevronLeftIcon, ChevronRightIcon, SquarePen, SearchIcon, HistoryIcon, RadioIcon, SquareIcon, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownEditor } from './components/markdown-editor';
 import { ChatSidebar } from './components/chat-sidebar';
@@ -48,6 +48,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useUpcomingMeetings, type UpcomingMeeting } from "@/hooks/useUpcomingMeetings"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Toaster } from "@/components/ui/sonner"
@@ -59,6 +61,9 @@ import { BackgroundTaskDetail } from '@/components/background-task-detail'
 import { VersionHistoryPanel } from '@/components/version-history-panel'
 import { FileCardProvider } from '@/contexts/file-card-context'
 import { MarkdownPreOverride } from '@/components/ai-elements/markdown-code-override'
+import { parseArtifacts } from '@/lib/parse-artifacts'
+import { useArtifactStore } from '@/contexts/artifact-context'
+import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { TabBar, type ChatTab, type FileTab } from '@/components/tab-bar'
 import {
   type ChatMessage,
@@ -101,9 +106,33 @@ interface TreeNode extends DirEntry {
 
 const streamdownComponents = { pre: MarkdownPreOverride }
 
-function SmoothStreamingMessage({ text, components }: { text: string; components: typeof streamdownComponents }) {
+/**
+ * Wraps MessageResponse with artifact extraction. Any `\`\`\`html artifact ...\`\`\``
+ * or `\`\`\`markdown artifact ...\`\`\`` fences found in the message are hoisted
+ * into the ArtifactStore and replaced inline with a chip that opens the side
+ * panel. Used by both the historical-message renderer and the streaming-
+ * message renderer so behavior is consistent.
+ */
+function AssistantMessageWithArtifacts({ text, messageId, components }: { text: string; messageId: string; components: typeof streamdownComponents }) {
+  const { setArtifact } = useArtifactStore()
+  const { cleanedText, artifacts } = React.useMemo(
+    () => parseArtifacts(text, messageId),
+    [text, messageId],
+  )
+  // Register/update every parsed artifact in the store. The store itself
+  // no-ops identical writes so this is cheap during streaming.
+  React.useEffect(() => {
+    for (const artifact of artifacts) {
+      setArtifact(artifact)
+    }
+  }, [artifacts, setArtifact])
+
+  return <MessageResponse components={components}>{cleanedText}</MessageResponse>
+}
+
+function SmoothStreamingMessage({ text, messageId, components }: { text: string; messageId: string; components: typeof streamdownComponents }) {
   const smoothText = useSmoothedText(text)
-  return <MessageResponse components={components}>{smoothText}</MessageResponse>
+  return <AssistantMessageWithArtifacts text={smoothText} messageId={messageId} components={components} />
 }
 
 const DEFAULT_SIDEBAR_WIDTH = 256
@@ -454,6 +483,8 @@ function FixedSidebarToggle({
   meetingSummarizing,
   meetingAvailable,
   onToggleMeeting,
+  onToggleMeetingWithEvent,
+  upcomingMeetings,
   leftInsetPx,
 }: {
   onNewChat: () => void
@@ -462,9 +493,16 @@ function FixedSidebarToggle({
   meetingSummarizing: boolean
   meetingAvailable: boolean
   onToggleMeeting: () => void
+  onToggleMeetingWithEvent: (ev: UpcomingMeeting) => void
+  upcomingMeetings: UpcomingMeeting[]
   leftInsetPx: number
 }) {
   const { toggleSidebar } = useSidebar()
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Show a picker only when idle + we actually have upcoming meetings.
+  // While recording / summarizing / connecting, the button is a direct action.
+  const showPicker = meetingState === 'idle' && !meetingSummarizing && upcomingMeetings.length > 0
   return (
     <div className="fixed left-0 top-0 z-50 flex h-10 items-center" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       <div aria-hidden="true" className="h-10 shrink-0" style={{ width: leftInsetPx }} />
@@ -496,39 +534,111 @@ function FixedSidebarToggle({
       >
         <SearchIcon className="size-5" />
       </button>
-      {/* Meeting record button — always visible now (was gated on meetingAvailable
+      {/* Meeting record button — always visible (was gated on meetingAvailable
           which required Deepgram to be configured). Click handler will show a
-          setup prompt if Deepgram/voice credentials aren't set up yet. */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onToggleMeeting}
-            disabled={meetingState === 'connecting' || meetingState === 'stopping' || meetingSummarizing}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none",
-              meetingSummarizing
-                ? "text-muted-foreground"
-                : meetingState === 'recording'
-                  ? "text-red-500 hover:bg-accent"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-            )}
-            style={{ marginLeft: TITLEBAR_BUTTON_GAP_PX }}
-            aria-label="Take meeting notes"
-          >
-            {meetingSummarizing || meetingState === 'connecting' ? (
-              <LoaderIcon className="size-4 animate-spin" />
-            ) : meetingState === 'recording' ? (
-              <SquareIcon className="size-4 animate-pulse" />
-            ) : (
-              <RadioIcon className="size-5" />
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          {meetingSummarizing ? 'Generating meeting notes...' : meetingState === 'connecting' ? 'Starting transcription...' : meetingState === 'recording' ? 'Stop meeting notes' : !meetingAvailable ? 'Take meeting notes (Deepgram required)' : 'Take meeting notes'}
-        </TooltipContent>
-      </Tooltip>
+          setup prompt if Deepgram/voice credentials aren't set up yet.
+
+          When idle AND there are upcoming calendar events, clicking opens a
+          popover that lets you attach this recording to a specific calendar
+          event (so the summarizer gets attendee names + title for free) or
+          start recording without any event attachment. */}
+      {showPicker ? (
+        <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  style={{ marginLeft: TITLEBAR_BUTTON_GAP_PX }}
+                  aria-label="Take meeting notes"
+                >
+                  <RadioIcon className="size-5" />
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              {upcomingMeetings.length === 1 ? 'Record upcoming meeting' : `Record — ${upcomingMeetings.length} meetings soon`}
+            </TooltipContent>
+          </Tooltip>
+          <PopoverContent align="start" sideOffset={6} className="w-80 p-1.5">
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+              Record a meeting
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {upcomingMeetings.map((m) => {
+                const start = new Date(m.startDateTime)
+                const timeLabel = start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                const now = Date.now()
+                const inProgress = start.getTime() <= now && new Date(m.endDateTime).getTime() > now
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setPickerOpen(false)
+                      onToggleMeetingWithEvent(m)
+                    }}
+                    className="flex items-start gap-2 rounded-md px-2 py-2 text-left hover:bg-accent transition-colors"
+                  >
+                    <CalendarIcon className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="truncate text-sm font-medium">{m.summary}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {inProgress ? 'In progress now' : `Starts ${timeLabel}`}
+                        {m.attendees.length > 0 && ` · ${m.attendees.length} ${m.attendees.length === 1 ? 'attendee' : 'attendees'}`}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+              <div className="my-1 border-t border-border" />
+              <button
+                type="button"
+                onClick={() => {
+                  setPickerOpen(false)
+                  onToggleMeeting()
+                }}
+                className="flex items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-accent transition-colors"
+              >
+                <RadioIcon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm">Start without calendar event</span>
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleMeeting}
+              disabled={meetingState === 'connecting' || meetingState === 'stopping' || meetingSummarizing}
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:pointer-events-none",
+                meetingSummarizing
+                  ? "text-muted-foreground"
+                  : meetingState === 'recording'
+                    ? "text-red-500 hover:bg-accent"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              )}
+              style={{ marginLeft: TITLEBAR_BUTTON_GAP_PX }}
+              aria-label="Take meeting notes"
+            >
+              {meetingSummarizing || meetingState === 'connecting' ? (
+                <LoaderIcon className="size-4 animate-spin" />
+              ) : meetingState === 'recording' ? (
+                <SquareIcon className="size-4 animate-pulse" />
+              ) : (
+                <RadioIcon className="size-5" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {meetingSummarizing ? 'Generating meeting notes...' : meetingState === 'connecting' ? 'Starting transcription...' : meetingState === 'recording' ? 'Stop meeting notes' : !meetingAvailable ? 'Take meeting notes (Deepgram required)' : 'Take meeting notes'}
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   )
 }
@@ -3509,6 +3619,16 @@ function App() {
 
   const [checkingPermission, setCheckingPermission] = useState(false)
 
+  // Upcoming-calendar-events picker: fetch on mount + whenever we return
+  // to idle (e.g. after a recording completes) so the next click sees
+  // fresh data without waiting for the 5-min calendar sync interval.
+  const { meetings: upcomingMeetings, refresh: refreshUpcomingMeetings } = useUpcomingMeetings()
+  useEffect(() => {
+    if (meetingTranscription.state === 'idle' && !meetingSummarizing) {
+      void refreshUpcomingMeetings()
+    }
+  }, [meetingTranscription.state, meetingSummarizing, refreshUpcomingMeetings])
+
   const startMeetingNow = useCallback(async () => {
     const calEvent = pendingCalendarEventRef.current
     pendingCalendarEventRef.current = undefined
@@ -3605,6 +3725,21 @@ function App() {
     }
   }, [meetingTranscription, handleVoiceNoteCreated, startMeetingNow])
   handleToggleMeetingRef.current = handleToggleMeeting
+
+  // Picker variant: user chose a specific upcoming meeting to attach this
+  // recording to. We stash the event on pendingCalendarEventRef — same ref
+  // startMeetingNow() consumes — then fall through to the normal toggle.
+  const handleToggleMeetingWithEvent = useCallback((ev: UpcomingMeeting) => {
+    pendingCalendarEventRef.current = {
+      summary: ev.summary,
+      start: { dateTime: ev.startDateTime },
+      end: { dateTime: ev.endDateTime },
+      htmlLink: ev.htmlLink,
+      location: ev.location,
+      source: 'picker',
+    }
+    void handleToggleMeeting()
+  }, [handleToggleMeeting])
 
   // Listen for calendar block "join meeting & take notes" events
   useEffect(() => {
@@ -3839,7 +3974,7 @@ function App() {
       return (
         <Message key={item.id} from={item.role} data-message-id={item.id}>
           <MessageContent>
-            <MessageResponse components={streamdownComponents}>{item.content}</MessageResponse>
+            <AssistantMessageWithArtifacts text={item.content} messageId={item.id} components={streamdownComponents} />
           </MessageContent>
         </Message>
       )
@@ -4411,7 +4546,7 @@ function App() {
                                 {tabState.currentAssistantMessage && (
                                   <Message from="assistant">
                                     <MessageContent>
-                                      <SmoothStreamingMessage text={tabState.currentAssistantMessage.replace(/<\/?voice>/g, '')} components={streamdownComponents} />
+                                      <SmoothStreamingMessage text={tabState.currentAssistantMessage.replace(/<\/?voice>/g, '')} messageId={`streaming-${activeChatTabId}`} components={streamdownComponents} />
                                     </MessageContent>
                                   </Message>
                                 )}
@@ -4548,6 +4683,8 @@ function App() {
               meetingSummarizing={meetingSummarizing}
               meetingAvailable={voiceAvailable}
               onToggleMeeting={() => { void handleToggleMeeting() }}
+              onToggleMeetingWithEvent={handleToggleMeetingWithEvent}
+              upcomingMeetings={upcomingMeetings}
               leftInsetPx={isMac ? MACOS_TRAFFIC_LIGHTS_RESERVED_PX : 0}
             />
           </SidebarProvider>
@@ -4560,6 +4697,7 @@ function App() {
         />
       </SidebarSectionProvider>
       <Toaster />
+      <ArtifactPanel />
       <OnboardingModal
         open={showOnboarding}
         onComplete={handleOnboardingComplete}
