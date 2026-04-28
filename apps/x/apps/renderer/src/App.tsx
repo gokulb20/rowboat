@@ -520,9 +520,9 @@ function App() {
 
   type LeftPane =
     | { type: 'empty' }
-    | { type: 'browser'; url: string }
+    | { type: 'browser'; url: string; browserTabId: string }
     | { type: 'markdown'; path: string }
-    | { type: 'artifact'; html: string; title: string }
+    | { type: 'artifact'; html: string; title: string; artifactId: string }
     | { type: 'graph' }
     | { type: 'bases'; path: string }
     | { type: 'task'; name: string }
@@ -2456,7 +2456,19 @@ function App() {
     const targetPanes = leftPanesByTab[tabId] ?? []
     const targetIdx = activeLeftPaneIdxByTab[tabId] ?? 0
     const targetLeftPane = targetPanes[Math.min(targetIdx, targetPanes.length - 1)] ?? { type: 'empty' } as LeftPane
-    if (targetLeftPane.type !== 'empty') syncPaneState(targetLeftPane)
+    if (targetLeftPane.type === 'browser') {
+      // Switch the global Electron browser to this tab's owned browser tab
+      void window.ipc.invoke('browser:switchTab', { tabId: targetLeftPane.browserTabId })
+      void window.ipc.invoke('browser:setVisible', { visible: true })
+      setIsBrowserOpen(true)
+    } else if (targetLeftPane.type !== 'empty') {
+      syncPaneState(targetLeftPane)
+      void window.ipc.invoke('browser:setVisible', { visible: false })
+      setIsBrowserOpen(false)
+    } else {
+      void window.ipc.invoke('browser:setVisible', { visible: false })
+      setIsBrowserOpen(false)
+    }
     const restored = restoreChatTabState(tabId, tab.runId)
     if (tab.runId && processingRunIdsRef.current.has(tab.runId)) {
       loadRun(tab.runId)
@@ -2465,13 +2477,20 @@ function App() {
     if (!restored) {
       applyChatTab(tab)
     }
-  }, [chatTabs, activeChatTabId, applyChatTab, loadRun, restoreChatTabState, saveChatScrollForTab])
+  }, [chatTabs, activeChatTabId, applyChatTab, loadRun, restoreChatTabState, saveChatScrollForTab, leftPanesByTab, activeLeftPaneIdxByTab])
 
   const closeChatTab = useCallback((tabId: string) => {
     if (chatTabs.length <= 1) return
     const idx = chatTabs.findIndex(t => t.id === tabId)
     if (idx === -1) return
     saveChatScrollForTab(tabId)
+    // Close all Electron browser tabs owned by this chat tab
+    const ownedBrowserTabIds = (leftPanesByTab[tabId] ?? [])
+      .filter(p => p.type === 'browser')
+      .map(p => p.browserTabId)
+    for (const bId of ownedBrowserTabIds) {
+      void window.ipc.invoke('browser:closeTab', { tabId: bId })
+    }
     const nextTabs = chatTabs.filter(t => t.id !== tabId)
     setChatTabs(nextTabs)
     setLeftPanesByTab(prev => {
@@ -2515,7 +2534,7 @@ function App() {
         applyChatTab(newActiveTab)
       }
     }
-  }, [chatTabs, activeChatTabId, applyChatTab, loadRun, restoreChatTabState, saveChatScrollForTab])
+  }, [chatTabs, activeChatTabId, applyChatTab, loadRun, restoreChatTabState, saveChatScrollForTab, leftPanesByTab])
 
   useEffect(() => {
     let cleanupScrollListener: (() => void) | undefined
@@ -2788,36 +2807,52 @@ function App() {
     return () => window.removeEventListener('rowboat:open-copilot-prompt', handler as EventListener)
   }, [submitFromPalette])
 
+  // Helper: create a new Electron browser tab and return its id + url
+  const createBrowserTab = useCallback(async (tabId: string, url: string): Promise<string> => {
+    const result = await window.ipc.invoke('browser:newTab', { url })
+    const browserTabId = result?.tabId as string
+    setLeftPanesByTab(prev => ({
+      ...prev,
+      [tabId]: [...(prev[tabId] ?? []), { type: 'browser', url, browserTabId }],
+    }))
+    setActiveLeftPaneIdxByTab(prev => {
+      const currentIdx = prev[tabId] ?? -1
+      return { ...prev, [tabId]: currentIdx + 1 }
+    })
+    return browserTabId
+  }, [])
+
   // Browser is an overlay on the middle pane: opening it forces the chat
   // sidebar to be visible on the right; closing it restores whatever the
   // middle pane was showing previously (file/graph/task/chat).
-  const handleToggleBrowser = useCallback(() => {
+  const handleToggleBrowser = useCallback(async () => {
     if (activeLeftPane.type === 'browser') {
-      // Close the active browser pane
+      // Close the associated Electron browser tab, then the pane
+      void window.ipc.invoke('browser:closeTab', { tabId: activeLeftPane.browserTabId })
       removePaneForTab(activeChatTabId, activeLeftPaneIdx)
       setIsBrowserOpen(false)
     } else {
-      // Open a new browser pane
-      pushPaneForTab(activeChatTabId, { type: 'browser', url: 'about:blank' })
+      await createBrowserTab(activeChatTabId, 'about:blank')
       setIsBrowserOpen(true)
       setIsChatSidebarOpen(true)
       setIsRightPaneMaximized(false)
     }
-  }, [activeChatTabId, activeLeftPane, activeLeftPaneIdx, pushPaneForTab, removePaneForTab])
+  }, [activeChatTabId, activeLeftPane, activeLeftPaneIdx, removePaneForTab, createBrowserTab])
 
-  const handleOpenHome = useCallback(() => {
-    pushPaneForTab(activeChatTabId, { type: 'browser', url: 'https://gokuls.vision' })
+  const handleOpenHome = useCallback(async () => {
+    await createBrowserTab(activeChatTabId, 'https://gokuls.vision')
     setIsBrowserOpen(true)
     setIsChatSidebarOpen(true)
     setIsRightPaneMaximized(false)
-    void window.ipc.invoke('browser:newTab', { url: 'https://gokuls.vision' })
-  }, [activeChatTabId, pushPaneForTab])
+  }, [activeChatTabId, createBrowserTab])
 
   const handleCloseBrowser = useCallback(() => {
-    // Close the active browser pane
+    if (activeLeftPane.type === 'browser') {
+      void window.ipc.invoke('browser:closeTab', { tabId: activeLeftPane.browserTabId })
+    }
     removePaneForTab(activeChatTabId, activeLeftPaneIdx)
     setIsBrowserOpen(false)
-  }, [activeChatTabId, activeLeftPaneIdx, removePaneForTab])
+  }, [activeChatTabId, activeLeftPane, activeLeftPaneIdx, removePaneForTab])
 
   const toggleRightPaneMaximize = useCallback(() => {
     setIsChatSidebarOpen(true)
@@ -2932,11 +2967,10 @@ function App() {
           if (!view.path.endsWith('.base') && BROWSER_VIEWABLE_EXTS.has(ext)) {
             // Browser-viewable files (PDF, HTML, images) open in browser left pane
             const url = `${WORKSPACE_BASE_URL}/${view.path}`
-            pushPaneForTab(activeChatTabId, { type: 'browser', url })
+            await createBrowserTab(activeChatTabId, url)
             setIsBrowserOpen(true)
             setIsChatSidebarOpen(true)
             setIsRightPaneMaximized(false)
-            void window.ipc.invoke('browser:newTab', { url })
           } else if (view.path.endsWith('.base') || view.path === BASES_DEFAULT_TAB_PATH) {
             // Base files
             pushPaneForTab(activeChatTabId, { type: 'bases', path: view.path })
@@ -2992,7 +3026,7 @@ function App() {
         }
         return
     }
-  }, [ensureFileTabForPath, ensureGraphFileTab, handleNewChat, isRightPaneMaximized, loadRun])
+  }, [ensureFileTabForPath, ensureGraphFileTab, handleNewChat, isRightPaneMaximized, loadRun, createBrowserTab])
 
   const navigateToView = useCallback(async (nextView: ViewState) => {
     const current = currentViewState
@@ -3063,14 +3097,13 @@ function App() {
 
   const WORKSPACE_BASE_URL = 'http://localhost:3210/vault/workspace'
 
-  const openFileInBrowser = useCallback((filePath: string) => {
+  const openFileInBrowser = useCallback(async (filePath: string) => {
     const url = `${WORKSPACE_BASE_URL}/${filePath}`
-    pushPaneForTab(activeChatTabId, { type: 'browser', url })
+    await createBrowserTab(activeChatTabId, url)
     setIsBrowserOpen(true)
     setIsChatSidebarOpen(true)
     setIsRightPaneMaximized(false)
-    void window.ipc.invoke('browser:newTab', { url })
-  }, [WORKSPACE_BASE_URL, activeChatTabId, pushPaneForTab])
+  }, [WORKSPACE_BASE_URL, activeChatTabId, createBrowserTab])
 
   const openHtmlInBrowser = useCallback(async (html: string) => {
     const timestamp = Date.now()
@@ -3081,18 +3114,17 @@ function App() {
       opts: { encoding: 'utf8', mkdirp: true },
     })
     const url = `${WORKSPACE_BASE_URL}/${tempPath}`
-    pushPaneForTab(activeChatTabId, { type: 'browser', url })
+    await createBrowserTab(activeChatTabId, url)
     setIsBrowserOpen(true)
     setIsChatSidebarOpen(true)
     setIsRightPaneMaximized(false)
-    void window.ipc.invoke('browser:newTab', { url })
-  }, [WORKSPACE_BASE_URL, activeChatTabId, pushPaneForTab])
+  }, [WORKSPACE_BASE_URL, activeChatTabId, createBrowserTab])
 
   const navigateToFile = useCallback((path: string) => {
     const ext = path.split('.').pop()?.toLowerCase() ?? ''
     if (!path.endsWith('.base') && BROWSER_VIEWABLE_EXTS.has(ext)) {
       // Browser-viewable files (PDF, HTML, images) open in browser left pane
-      openFileInBrowser(path)
+      void openFileInBrowser(path)
       return
     }
     // MD and other text files open in Markdown editor left pane
@@ -3753,6 +3785,37 @@ function App() {
     return () => window.removeEventListener('browser:open', handler)
   }, [])
 
+  // Sync browser URL changes back to leftPanesByTab so the address bar
+  // and pane sub-tab labels stay in sync when the user navigates.
+  useEffect(() => {
+    interface BrowserTab { id: string; url: string; title: string }
+    interface BState { activeTabId: string | null; tabs: BrowserTab[] }
+    const handler = (incoming: unknown) => {
+      const state = incoming as BState
+      if (!state?.tabs) return
+      // Find which chat tab owns each browser tab and update its URL
+      setLeftPanesByTab(prev => {
+        let changed = false
+        const next: Record<string, LeftPane[]> = {}
+        for (const [tabId, panes] of Object.entries(prev)) {
+          const newPanes = panes.map(pane => {
+            if (pane.type !== 'browser') return pane
+            const bt = state.tabs.find((t: BrowserTab) => t.id === pane.browserTabId)
+            if (bt && bt.url !== pane.url) {
+              changed = true
+              return { ...pane, url: bt.url }
+            }
+            return pane
+          })
+          next[tabId] = newPanes
+        }
+        return changed ? next : prev
+      })
+    }
+    const cleanup = window.ipc.on('browser:didUpdateState', handler)
+    return cleanup
+  }, [])
+
   // "Edit Source" button in /md-view/ rendered pages navigates to rowboat://md-edit
   // which the main process intercepts and forwards as browser:mdEdit IPC event
   useEffect(() => {
@@ -4239,8 +4302,6 @@ function App() {
                   <TooltipContent side="bottom">Version history</TooltipContent>
                 </Tooltip>
               )}
-              {/* Spacer to push right-side buttons to the end */}
-              <div className="flex-1" />
               {/* Browser toggle - opens/closes browser in left pane */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -4321,8 +4382,8 @@ function App() {
                         <span
                           role="button"
                           tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); removePaneForTab(activeChatTabId, idx) }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); removePaneForTab(activeChatTabId, idx) } }}
+                          onClick={(e) => { e.stopPropagation(); const pane = activeLeftPanes[idx]; if (pane.type === 'browser') { void window.ipc.invoke('browser:closeTab', { tabId: pane.browserTabId }) } removePaneForTab(activeChatTabId, idx) }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); const pane = activeLeftPanes[idx]; if (pane.type === 'browser') { void window.ipc.invoke('browser:closeTab', { tabId: pane.browserTabId }) } removePaneForTab(activeChatTabId, idx) } }}
                           className="ml-1 shrink-0 rounded-sm p-0.5 hover:bg-accent-foreground/20"
                         >
                           <XIcon className="size-3" />

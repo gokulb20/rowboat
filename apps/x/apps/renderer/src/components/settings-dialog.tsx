@@ -160,6 +160,7 @@ const OLLAMA_MODELS = [
   { id: "glm-5.1:cloud", name: "GLM 5.1" },
   { id: "kimi-k2.6:cloud", name: "Kimi K2.6" },
   { id: "deepseek-v4-flash:cloud", name: "DeepSeek V4 Flash" },
+  { id: "deepseek-v4-pro:cloud", name: "DeepSeek V4 Pro" },
 ]
 
 function ModelSettings({ dialogOpen }: { dialogOpen: boolean }) {
