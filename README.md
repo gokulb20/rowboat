@@ -1,156 +1,101 @@
-<a href="https://www.youtube.com/watch?v=5AWoGo-L16I" target="_blank" rel="noopener noreferrer">
-  <img width="1339" height="607" alt="rowboat-github-2" src="https://github.com/user-attachments/assets/fc463b99-01b3-401c-b4a4-044dad480901" />
-</a>
+# Crewm8 Desktop
 
-<h5 align="center">
-
-<p align="center" style="display: flex; justify-content: center; gap: 20px; align-items: center;">
-  <a href="https://trendshift.io/repositories/13609" target="blank">
-    <img src="https://trendshift.io/api/badge/repositories/13609" alt="rowboatlabs/rowboat | Trendshift" width="250" height="55"/>
-  </a>
-</p>
-
-<p align="center">
-    <a href="https://www.rowboatlabs.com/" target="_blank" rel="noopener">
-    <img alt="Website" src="https://img.shields.io/badge/Website-10b981?labelColor=10b981&logo=window&logoColor=white">
-  </a>
-  <a href="https://discord.gg/wajrgmJQ6b" target="_blank" rel="noopener">
-    <img alt="Discord" src="https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&labelColor=5865F2">
-  </a>
-  <a href="https://x.com/intent/user?screen_name=rowboatlabshq" target="_blank" rel="noopener">
-    <img alt="Twitter" src="https://img.shields.io/twitter/follow/rowboatlabshq?style=social">
-  </a>
-  <a href="https://www.ycombinator.com" target="_blank" rel="noopener">
-    <img alt="Y Combinator" src="https://img.shields.io/badge/Y%20Combinator-S24-orange">
-  </a>
-</p>
-
-# Rowboat  
 **Open-source AI coworker that turns work into a knowledge graph and acts on it**
 
-</h5>
+Forked from [Rowboat](https://github.com/rowboatlabs/rowboat).
 
-Rowboat connects to your email and meeting notes, builds a long-lived knowledge graph, and uses that context to help you get work done - privately, on your machine.
-
-You can do things like:
-- `Build me a deck about our next quarter roadmap` → generates a PDF using context from your knowledge graph
-- `Prep me for my meeting with Alex` → pulls past decisions, open questions, and relevant threads into a crisp brief (or a voice note)
-- Track a person, company or topic through live notes
-- Visualize, edit, and update your knowledge graph anytime (it’s just Markdown)
-- Record voice memos that automatically capture and update key takeaways in the graph
-
-Download latest for Mac/Windows/Linux: [Download](https://www.rowboatlabs.com/downloads)
-
-⭐ If you find Rowboat useful, please star the repo. It helps more people find it.
-
-## Demo
-[![Demo](https://github.com/user-attachments/assets/8b9a859b-d4f1-47ca-9d1d-9d26d982e15d)](https://www.youtube.com/watch?v=7xTpciZCfpw)
-
-[Watch the full video](https://www.youtube.com/watch?v=7xTpciZCfpw)
-
----
-
-## Installation
-
-**Download latest for Mac/Windows/Linux:** [Download](https://www.rowboatlabs.com/downloads)
-
-**All release files:**   https://github.com/rowboatlabs/rowboat/releases/latest
-
-### Google setup
-To connect Google services (Gmail, Calendar, and Drive), follow [Google setup](https://github.com/rowboatlabs/rowboat/blob/main/google-setup.md).
-
-### Voice input
-To enable voice input and voice notes (optional), add a Deepgram API key in `~/.rowboat/config/deepgram.json`
-
-### Voice output
-
-To enable voice output (optional), add an ElevenLabs API key in `~/.rowboat/config/elevenlabs.json`
-
-### Web search
-
-To use Exa research search (optional), add the Exa API key in `~/.rowboat/config/exa-search.json`
-
-### External tools
-
-To enable external tools (optional), you can add any MCP server or use Composio tools by adding an API key in `~/.rowboat/config/composio.json`
-
-All API key files use the same format:
-```
-{
-  "apiKey": "<key>"
-}
-```
+Crewm8 connects to your email and calendar, builds a long-lived knowledge graph, and uses that context to help you get work done — privately, on your machine.
 
 ## What it does
 
-Rowboat is a **local-first AI coworker** that can:
-- **Remember** the important context you don’t want to re-explain (people, projects, decisions, commitments)
-- **Understand** what’s relevant right now (before a meeting, while replying to an email, when writing a doc)
+- **Remember** important context you don't want to re-explain (people, projects, decisions, commitments)
+- **Understand** what's relevant right now (before a meeting, while replying to an email, when writing a doc)
 - **Help you act** by drafting, summarizing, planning, and producing real artifacts (briefs, emails, docs, PDF slides)
 
-Under the hood, Rowboat maintains an **Obsidian-compatible vault** of plain Markdown notes with backlinks — a transparent “working memory” you can inspect and edit.
+Under the hood, Crewm8 maintains an **Obsidian-compatible vault** of plain Markdown notes with backlinks — a transparent "working memory" you can inspect and edit.
 
-## Integrations
+## Getting Started
 
-Rowboat builds memory from the work you already do, including:
-- **Gmail** (email)
-- **Google Calendar** 
-- **Rowboat meeting notes** or **Fireflies**
+### Prerequisites
 
-It also contains a library of product integrations through Composio.dev
+- Node.js 22+
+- pnpm 9+
 
-## How it’s different
+### Install & Run
 
-Most AI tools reconstruct context on demand by searching transcripts or documents.
+```bash
+cd apps/desktop
+pnpm install
+npm run deps    # Build workspace packages (shared → core → preload)
+npm run dev     # Start development mode
+```
 
-Rowboat maintains **long-lived knowledge** instead:
-- context accumulates over time
-- relationships are explicit and inspectable
-- notes are editable by you, not hidden inside a model
-- everything lives on your machine as plain Markdown
+### Build for Production
 
-The result is memory that compounds, rather than retrieval that starts cold every time.
+```bash
+cd apps/desktop/apps/main
+npm run package   # Create .app bundle
+npm run make      # Create DMG distributable
+```
 
-## What you can do with it
+## Configuration
 
-- **Meeting prep** from prior decisions, threads, and open questions
-- **Email drafting** grounded in history and commitments
-- **Docs & decks** generated from your ongoing context (including PDF slides)
-- **Follow-ups**: capture decisions, action items, and owners so nothing gets dropped
-- **On-your-machine help**: create files, summarize into notes, and run workflows using local tools (with explicit, reviewable actions)
+### LLM Models
 
-## Live notes
+Config file: `~/.crewm8/config/models.json`
 
-Live notes are notes that stay updated automatically. You can create one by typing '@rowboat' on a note. 
+```json
+{
+  "provider": { "flavor": "openai", "apiKey": "sk-..." },
+  "model": "gpt-4o"
+}
+```
 
-- Track a competitor or market topic across X, Reddit, and the news
-- Monitor a person, project, or deal across web or your communications
-- Keep a running summary of any subject you care about
+Supports local models via Ollama, or any OpenAI-compatible provider.
 
-Everything is written back into your local Markdown vault. You control what runs and when.
+### Integrations (via Composio)
 
-## Bring your own model
+Add a Composio API key in `~/.crewm8/config/composio.json`:
 
-Rowboat works with the model setup you prefer:
-- **Local models** via Ollama or LM Studio
-- **Hosted models** (bring your own API key/provider)
-- Swap models anytime — your data stays in your local Markdown vault
+```json
+{
+  "apiKey": "<your-composio-key>"
+}
+```
 
-## Extend Rowboat with tools (MCP)
+This enables Gmail, Google Calendar, Slack, GitHub, and 250+ other integrations.
 
-Rowboat can connect to external tools and services via **Model Context Protocol (MCP)**.
-That means you can plug in (for example) search, databases, CRMs, support tools, and automations - or your own internal tools.
+### Web Search (Exa)
 
-Examples: Exa (web search), Twitter/X, ElevenLabs (voice), Slack, Linear/Jira, GitHub, and more.
+Optional: Add an Exa API key in `~/.crewm8/config/exa-search.json`
 
-## Local-first by design
+### MCP Servers
 
-- All data is stored locally as plain Markdown
-- No proprietary formats or hosted lock-in
-- You can inspect, edit, back up, or delete everything at any time
+Connect external tools and services via **Model Context Protocol (MCP)** in the app settings.
 
----
-<div align="center">
+## Architecture
 
-[Discord](https://discord.gg/wajrgmJQ6b) · [Twitter](https://x.com/intent/user?screen_name=rowboatlabshq)
-</div>
+```
+apps/desktop/
+├── apps/
+│   ├── main/              # Electron main process
+│   ├── renderer/          # React UI (Vite)
+│   └── preload/           # Electron preload scripts
+└── packages/
+    ├── shared/            # @crewm8/shared - Types, IPC schema, validators
+    └── core/              # @crewm8/core - AI, knowledge graph, Composio
+```
+
+Build order: `shared → core → preload → renderer/main`
+
+## Key Differences from Rowboat
+
+- **No cloud service**: All integrations route through [Composio](https://composio.dev) — no Rowboat cloud, Stripe, Auth0, or direct Google OAuth
+- **No voice mode**: Deepgram and ElevenLabs integrations removed (may return in future versions)
+- **Custom protocol**: `crewm8://` instead of `rowboat://`
+- **Data directory**: `~/.crewm8/` instead of `~/.rowboat/`
+- **Brand**: Crewm8 (ai.crewm8.app bundle ID)
+
+## License
+
+MIT

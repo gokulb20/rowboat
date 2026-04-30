@@ -1,40 +1,36 @@
 # CLAUDE.md - AI Coding Agent Context
 
-This file provides context for AI coding agents working on the Rowboat monorepo.
+This file provides context for AI coding agents working on the Crewm8 desktop app (forked from Rowboat).
 
 ## Quick Reference Commands
 
 ```bash
-# Electron App (apps/x)
-cd apps/x && pnpm install          # Install dependencies
-cd apps/x && npm run deps          # Build workspace packages (shared → core → preload)
-cd apps/x && npm run dev           # Development mode (builds deps, runs app)
-cd apps/x && npm run lint          # Lint check
-cd apps/x/apps/main && npm run package   # Production build (.app)
-cd apps/x/apps/main && npm run make      # Create DMG distributable
+# Electron App (apps/desktop)
+cd apps/desktop && pnpm install          # Install dependencies
+cd apps/desktop && npm run deps          # Build workspace packages (shared → core → preload)
+cd apps/desktop && npm run dev           # Development mode (builds deps, runs app)
+cd apps/desktop && npm run lint          # Lint check
+cd apps/desktop/apps/main && npm run package   # Production build (.app)
+cd apps/desktop/apps/main && npm run make      # Create DMG distributable
 ```
 
 ## Monorepo Structure
 
 ```
-rowboat/
-├── apps/
-│   ├── x/                 # Electron desktop app (focus of this doc)
-│   ├── rowboat/           # Next.js web dashboard
-│   ├── rowboatx/          # Next.js frontend
-│   ├── cli/               # CLI tool
-│   ├── python-sdk/        # Python SDK
-│   └── docs/              # Documentation site
+crewm8-desktop/
+├── apps/desktop/          # Electron desktop app (the only app)
 ├── CLAUDE.md              # This file
 └── README.md              # User-facing readme
 ```
 
-## Electron App Architecture (`apps/x`)
+The other Rowboat apps (dashboard, frontend, CLI, python-sdk, docs) have been removed. This repo is now solely the Crewm8 desktop app.
+
+## Electron App Architecture (`apps/desktop`)
 
 The Electron app is a **nested pnpm workspace** with its own package management.
 
 ```
-apps/x/
+apps/desktop/
 ├── package.json           # Workspace root, dev scripts
 ├── pnpm-workspace.yaml    # Defines workspace packages
 ├── pnpm-lock.yaml         # Lockfile
@@ -49,8 +45,8 @@ apps/x/
 │   └── preload/           # Electron preload scripts
 │       └── src/
 └── packages/
-    ├── shared/            # @x/shared - Types, utilities, validators
-    └── core/              # @x/core - Business logic, AI, OAuth, MCP
+    ├── shared/            # @crewm8/shared - Types, utilities, validators
+    └── core/              # @crewm8/core - Business logic, AI, MCP, Composio
 ```
 
 ### Build Order (Dependencies)
@@ -92,15 +88,15 @@ pnpm uses symlinks for workspace packages. Electron Forge's dependency walker ca
 
 | Purpose | File |
 |---------|------|
-| Electron main entry | `apps/x/apps/main/src/main.ts` |
-| React app entry | `apps/x/apps/renderer/src/main.tsx` |
-| Forge config (packaging) | `apps/x/apps/main/forge.config.cjs` |
-| Main process bundler | `apps/x/apps/main/bundle.mjs` |
-| Vite config | `apps/x/apps/renderer/vite.config.ts` |
-| Shared types | `apps/x/packages/shared/src/` |
-| Core business logic | `apps/x/packages/core/src/` |
-| Workspace config | `apps/x/pnpm-workspace.yaml` |
-| Root scripts | `apps/x/package.json` |
+| Electron main entry | `apps/desktop/apps/main/src/main.ts` |
+| React app entry | `apps/desktop/apps/renderer/src/main.tsx` |
+| Forge config (packaging) | `apps/desktop/apps/main/forge.config.cjs` |
+| Main process bundler | `apps/desktop/apps/main/bundle.mjs` |
+| Vite config | `apps/desktop/apps/renderer/vite.config.ts` |
+| Shared types | `apps/desktop/packages/shared/src/` |
+| Core business logic | `apps/desktop/packages/core/src/` |
+| Workspace config | `apps/desktop/pnpm-workspace.yaml` |
+| Root scripts | `apps/desktop/package.json` |
 
 ## Feature Deep-Dives
 
@@ -108,34 +104,34 @@ Long-form docs for specific features. Read the relevant file before making chang
 
 | Feature | Doc |
 |---------|-----|
-| Track Blocks — auto-updating note content (scheduled / event-driven / manual), Copilot skill, prompts catalog | `apps/x/TRACKS.md` |
+| Track Blocks — auto-updating note content (scheduled / event-driven / manual), Copilot skill, prompts catalog | `apps/desktop/TRACKS.md` |
 
 ## Common Tasks
 
 ### LLM configuration (single provider)
-- Config file: `~/.rowboat/config/models.json`
+- Config file: `~/.crewm8/config/models.json`
 - Schema: `{ provider: { flavor, apiKey?, baseURL?, headers? }, model: string }`
-- Models catalog cache: `~/.rowboat/config/models.dev.json` (OpenAI/Anthropic/Google only)
+- Models catalog cache: `~/.crewm8/config/models.dev.json` (OpenAI/Anthropic/Google only)
 
 ### Add a new shared type
-1. Edit `apps/x/packages/shared/src/`
-2. Run `cd apps/x && npm run deps` to rebuild
+1. Edit `apps/desktop/packages/shared/src/`
+2. Run `cd apps/desktop && npm run deps` to rebuild
 
 ### Modify main process
-1. Edit `apps/x/apps/main/src/`
+1. Edit `apps/desktop/apps/main/src/`
 2. Restart dev server (main doesn't hot-reload)
 
 ### Modify renderer (React UI)
-1. Edit `apps/x/apps/renderer/src/`
+1. Edit `apps/desktop/apps/renderer/src/`
 2. Changes hot-reload automatically in dev mode
 
 ### Add a new dependency to main
-1. `cd apps/x/apps/main && pnpm add <package>`
+1. `cd apps/desktop/apps/main && pnpm add <package>`
 2. Import in source - esbuild will bundle it
 
 ### Verify compilation
 ```bash
-cd apps/x && npm run deps && npm run lint
+cd apps/desktop && npm run deps && npm run lint
 ```
 
 ## Tech Stack
